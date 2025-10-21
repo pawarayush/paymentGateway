@@ -2,24 +2,18 @@ package org.project.quickbites.genc.dto;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class PaymentResponse {
+public class Payment {
+    // For requests and responses
     private Long paymentId;
     private String orderId;
-    private PaymentMethod paymentMethod;
+    private String paymentMethod; // "CARD", "UPI", "COD"
     private BigDecimal amount;
-    private PaymentStatus status;
+    private String status; // "SUCCESS", "FAILED", "PENDING"
+    private String cardNumber; // For CARD payments
+    private String upiId; // For UPI payments
     private OffsetDateTime createdTimestamp;
     private OffsetDateTime updatedTimestamp;
 }
-
-

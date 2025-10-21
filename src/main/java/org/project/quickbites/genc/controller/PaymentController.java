@@ -1,8 +1,6 @@
 package org.project.quickbites.genc.controller;
 
-import org.project.quickbites.genc.dto.PaymentRequest;
-import org.project.quickbites.genc.dto.PaymentResponse;
-import org.project.quickbites.genc.dto.PaymentStatus;
+import org.project.quickbites.genc.dto.Payment;
 import org.project.quickbites.genc.service.PaymentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,36 +25,36 @@ public class PaymentController {
     }
 
     @PostMapping
-    public ResponseEntity<PaymentResponse> createPayment(@Validated @RequestBody PaymentRequest request) {
-        PaymentResponse response = paymentService.createPayment(request);
+    public ResponseEntity<Payment> createPayment(@Validated @RequestBody Payment request) {
+        Payment response = paymentService.createPayment(request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @GetMapping("/{paymentId}")
-    public ResponseEntity<PaymentResponse> getById(@PathVariable Long paymentId) {
-        PaymentResponse response = paymentService.getPaymentById(paymentId);
+    public ResponseEntity<Payment> getById(@PathVariable Long paymentId) {
+        Payment response = paymentService.getPaymentById(paymentId);
         if (response == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(response);
     }
 
     @GetMapping
-    public ResponseEntity<PaymentResponse> getByOrderId(@RequestParam("orderId") String orderId) {
-        PaymentResponse response = paymentService.getPaymentByOrderId(orderId);
+    public ResponseEntity<Payment> getByOrderId(@RequestParam("orderId") String orderId) {
+        Payment response = paymentService.getPaymentByOrderId(orderId);
         if (response == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{paymentId}/status")
-    public ResponseEntity<PaymentResponse> updateStatus(@PathVariable Long paymentId,
-                                                        @RequestParam("status") PaymentStatus status) {
-        PaymentResponse response = paymentService.updateStatus(paymentId, status);
+    public ResponseEntity<Payment> updateStatus(@PathVariable Long paymentId,
+                                               @RequestParam("status") String status) {
+        Payment response = paymentService.updateStatus(paymentId, status);
         if (response == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{paymentId}/delivered")
-    public ResponseEntity<PaymentResponse> markDelivered(@PathVariable Long paymentId) {
-        PaymentResponse response = paymentService.markDelivered(paymentId);
+    public ResponseEntity<Payment> markDelivered(@PathVariable Long paymentId) {
+        Payment response = paymentService.markDelivered(paymentId);
         if (response == null) {
             // either not found or invalid transition for non-COD or non-pending
             return ResponseEntity.status(HttpStatus.CONFLICT).build();

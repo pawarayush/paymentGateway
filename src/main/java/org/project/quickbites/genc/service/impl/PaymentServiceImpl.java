@@ -1,12 +1,10 @@
 package org.project.quickbites.genc.service.impl;
 
-import org.project.quickbites.genc.dto.PaymentMethod;
-import org.project.quickbites.genc.dto.PaymentRequest;
-import org.project.quickbites.genc.dto.PaymentResponse;
-import org.project.quickbites.genc.dto.PaymentStatus;
-import org.project.quickbites.genc.entity.Payment;
+import org.project.quickbites.genc.dto.Payment;
+import org.project.quickbites.genc.entity.PaymentEntity;
 import org.project.quickbites.genc.repo.PaymentRepository;
 import org.project.quickbites.genc.service.PaymentService;
+import org.project.quickbites.genc.util.SimpleValidation;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,85 +19,83 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentResponse createPayment(PaymentRequest request) {
-        // If card method, ensure cardNumber present and valid per DTO validation
-        Payment payment = new Payment();
-        payment.setOrderId(request.getOrderId());
-        payment.setPaymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod().name() : null);
-        payment.setAmount(request.getAmount());
-        // COD -> PENDING until delivered; others -> SUCCESS on pay
-        if (request.getPaymentMethod() == PaymentMethod.COD) {
-            payment.setStatus(PaymentStatus.PENDING.name());
-        } else {
-            payment.setStatus(PaymentStatus.SUCCESS.name());
+    public Payment createPayment(Payment request) {
+        // Simple validation
+        if ("CARD".equals(request.getPaymentMethod()) && !SimpleValidation.isValidCard(request.getCardNumber())) {
+            throw new IllegalArgumentException("Invalid card number");
         }
-        Payment saved = paymentRepository.save(payment);
-        return toResponse(saved);
+        if ("UPI".equals(request.getPaymentMethod()) && !SimpleValidation.isValidUpi(request.getUpiId())) {
+            throw new IllegalArgumentException("Invalid UPI ID");
+        }
+        
+        PaymentEntity entity = new PaymentEntity();
+        entity.setOrderId(request.getOrderId());
+        entity.setPaymentMethod(request.getPaymentMethod());
+        entity.setAmount(request.getAmount());
+        
+        // COD -> PENDING until delivered; others -> SUCCESS on pay
+        if ("COD".equals(request.getPaymentMethod())) {
+            entity.setStatus("PENDING");
+        } else {
+            entity.setStatus("SUCCESS");
+        }
+        PaymentEntity saved = paymentRepository.save(entity);
+        return toDto(saved);
     }
 
     @Override
-    public PaymentResponse getPaymentById(Long paymentId) {
+    public Payment getPaymentById(Long paymentId) {
         return paymentRepository.findById(paymentId)
-                .map(this::toResponse)
+                .map(this::toDto)
                 .orElse(null);
     }
 
     @Override
-    public PaymentResponse getPaymentByOrderId(String orderId) {
+    public Payment getPaymentByOrderId(String orderId) {
         return paymentRepository.findTopByOrderIdOrderByCreatedTimestampDesc(orderId)
-                .map(this::toResponse)
+                .map(this::toDto)
                 .orElse(null);
     }
 
     @Override
     @Transactional
-    public PaymentResponse updateStatus(Long paymentId, PaymentStatus status) {
+    public Payment updateStatus(Long paymentId, String status) {
         return paymentRepository.findById(paymentId)
                 .map(p -> {
-                    p.setStatus(status != null ? status.name() : null);
-                    return toResponse(paymentRepository.save(p));
+                    p.setStatus(status);
+                    return toDto(paymentRepository.save(p));
                 })
                 .orElse(null);
     }
 
     @Override
     @Transactional
-    public PaymentResponse markDelivered(Long paymentId) {
+    public Payment markDelivered(Long paymentId) {
         return paymentRepository.findById(paymentId)
                 .map(p -> {
                     // Only allow COD and only from PENDING -> SUCCESS
                     boolean isCod = "COD".equalsIgnoreCase(p.getPaymentMethod());
-                    boolean isPending = PaymentStatus.PENDING.name().equalsIgnoreCase(p.getStatus());
+                    boolean isPending = "PENDING".equalsIgnoreCase(p.getStatus());
                     if (isCod && isPending) {
-                        p.setStatus(PaymentStatus.SUCCESS.name());
-                        return toResponse(paymentRepository.save(p));
+                        p.setStatus("SUCCESS");
+                        return toDto(paymentRepository.save(p));
                     }
                     return null;
                 })
                 .orElse(null);
     }
 
-    private PaymentResponse toResponse(Payment payment) {
-        if (payment == null) return null;
-        PaymentResponse resp = new PaymentResponse();
-        resp.setPaymentId(payment.getPaymentId());
-        resp.setOrderId(payment.getOrderId());
-        resp.setPaymentMethod(parseMethod(payment.getPaymentMethod()));
-        resp.setAmount(payment.getAmount());
-        resp.setStatus(parseStatus(payment.getStatus()));
-        resp.setCreatedTimestamp(payment.getCreatedTimestamp());
-        resp.setUpdatedTimestamp(payment.getUpdatedTimestamp());
-        return resp;
-    }
-
-    private PaymentMethod parseMethod(String method) {
-        if (method == null) return null;
-        try { return PaymentMethod.valueOf(method); } catch (IllegalArgumentException e) { return null; }
-    }
-
-    private PaymentStatus parseStatus(String status) {
-        if (status == null) return null;
-        try { return PaymentStatus.valueOf(status); } catch (IllegalArgumentException e) { return null; }
+    private Payment toDto(PaymentEntity entity) {
+        if (entity == null) return null;
+        Payment dto = new Payment();
+        dto.setPaymentId(entity.getPaymentId());
+        dto.setOrderId(entity.getOrderId());
+        dto.setPaymentMethod(entity.getPaymentMethod());
+        dto.setAmount(entity.getAmount());
+        dto.setStatus(entity.getStatus());
+        dto.setCreatedTimestamp(entity.getCreatedTimestamp());
+        dto.setUpdatedTimestamp(entity.getUpdatedTimestamp());
+        return dto;
     }
 }
 
